@@ -31,15 +31,28 @@ func (l *SequenceList) FindByValue(elemValue Elem) (elemAddr *Elem, err error) {
 }
 
 // Insert 插入元素到线性表第i个位置
-func (l *SequenceList) Insert(i int, elem Elem) (newLen int, err error) {
+func (l *SequenceList) Insert(i int, elem Elem) (err error) {
 
-	return newLen, nil
+	return nil
 }
 
 // Delete 删除第i个位置的元素
-func (l *SequenceList) Delete(i int) (newLen int, err error) {
+func (l *SequenceList) Delete(i int) (err error) {
 
-	return newLen, nil
+	return nil
+}
+
+// Append 末尾追加元素
+func (l *SequenceList) Append(elem Elem) (err error) {
+
+
+	return nil
+}
+
+// Prepend 末尾追加元素
+func (l *SequenceList) Prepend(elem Elem) (err error) {
+
+	return nil
 }
 
 // PrintAll 从前向后遍历线性表中所有元素并打印
