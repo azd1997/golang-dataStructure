@@ -6,7 +6,7 @@ import (
 )
 
 // MAXSIZE 线性表的最大长度
-const MAXSIZE = 20
+const MAXSIZE = 10
 
 // Elem 线性表所存储的元素应为同类型，在需要比较元素类型时需要去获取元素类型来做判断。
 // 线性表元素目前仅考虑支持基础类型（Bool、String、Intx）以及聚合类型（Array、Struct）
@@ -20,7 +20,7 @@ type LinearList interface {
 	// 根据元素索引找到元素并返回元素内存位置
 	FindByIndex(i int) (elemAddr *Elem, err error)
 	// 根据元素值找到该元素的内存地址信息（如果只考虑顺序表，可以返回数组下表。但是我们还要考虑链式表）
-	FindByValue(elemValue Elem) (elemAddr *Elem, err error)
+	FindByValue(elemValue Elem) (elemAddrs []*Elem)
 	// 插入元素到线性表第i个位置
 	Insert(i int, elem Elem) (err error)
 	// 删除第i个位置的元素

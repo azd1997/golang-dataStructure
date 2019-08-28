@@ -1,37 +1,26 @@
 package linearlist
 
-// 链表天生动态扩容，只不过这里为了把它和顺序表放一块去练习，人为设置了MAXSIZE
-
 import (
 	"log"
 )
 
-// 严格检验SequenceList是否实现LinearList接口
-// 实现LinearList的是*SequenceList
-var _ LinearList = (*SingleLinkedList)(nil)
+var _ LinearList = (*CircularDoubleLinkedList)(nil)
 
-// SingleLinkedList 单链表
-// 可以不设头尾节点，但是有些操作复杂度会较高
-// 为了方便，增加头、尾节点，采用尾插法创建单链
-// 要想实现动态扩容，底层基于slice，或者自己写array的自动扩容。
-// l := SingleLinkedList{}  l: {<nil> <nil> 0}
-type SingleLinkedList struct {
-	// 头指针，指向第一个节点地址
-	head *SNode
-	// 尾指针，指向最后一个节点指针
-	tail *SNode
-	// 节点数，避免需要长度时发生遍历
+// CircularDoubleLinkedList 循环双链表
+type CircularDoubleLinkedList struct {
+	// 循环单链表只需要一个head。当然也可以加一个tail，在有些时候会方便许多
+	head *CDNode
 	length int
 }
 
-// SNode 单链表节点
-type SNode struct {
+// CDNode 循环双链表的节点
+type CDNode struct {
 	elem Elem
-	next *SNode
+	prior, next *CDNode
 }
 
 // Length 返回线性表使用长度
-func (l *SingleLinkedList) Length() (len int) {
+func (l *CircularDoubleLinkedList) Length() (len int) {
 	return l.length
 }
 
@@ -41,7 +30,7 @@ func (l *SingleLinkedList) Length() (len int) {
 // 最好时间复杂度： 查找第一个节点元素，O(1)
 // 最坏时间复杂度： 查找最后一个节点元素，O(n)
 // 平均时间复杂度： (0+1+2+...+n)/n = (n+1)/2， O(n)
-func (l *SingleLinkedList) FindByIndex(i int) (elemAddr *Elem, err error) {
+func (l *CircularDoubleLinkedList) FindByIndex(i int) (elemAddr *Elem, err error) {
 	// 检查非空以及索引i存在
 	// length >= 0。i需要在1～length之间
 	if i <= 0 || i > l.length {
@@ -60,7 +49,7 @@ func (l *SingleLinkedList) FindByIndex(i int) (elemAddr *Elem, err error) {
 // FindByValue 根据元素值找到该元素的内存地址信息（如果只考虑顺序表，可以返回数组下表。但是我们还要考虑链式表）
 // 假设MAXSIZE可以很大
 // 最好、最坏、平均时间复杂度： O(n)
-func (l *SingleLinkedList) FindByValue(elemValue Elem) (elemAddrs []*Elem) {
+func (l *CircularDoubleLinkedList) FindByValue(elemValue Elem) (elemAddrs []*Elem) {
 
 	// 循环遍历线性表， 匹配值
 	next := l.head
@@ -82,7 +71,7 @@ func (l *SingleLinkedList) FindByValue(elemValue Elem) (elemAddrs []*Elem) {
 // 最好时间复杂度： 插入到末尾后一个位置和第一个位置 O(1)
 // 最坏时间复杂度： 插入到末尾位置，需要遍历到最后一个，O(n)
 // 平均时间复杂度： (1+1+2+...+n)/(n+1) ～ n/2， O(n)
-func (l *SingleLinkedList) Insert(i int, elem Elem) (err error) {
+func (l *CircularDoubleLinkedList) Insert(i int, elem Elem) (err error) {
 	// 要求原线性表未满、i在线性表索引值范围
 	// 这里需要注意IsFull： i >= l.length。但是这里和sequencelist.go的区别在于
 	// 顺序表底层基于数组，索引其实是0开始，所以它可以l.IsFull就直接报错
@@ -118,12 +107,14 @@ func (l *SingleLinkedList) Insert(i int, elem Elem) (err error) {
 
 		// 插入第i个节点
 		// 注意这里如果是插入第length+1个节点，next指针会是空，这不影响，但是需要更新tail，同样的如果是第一个节点，也需要更新head
-		node := SNode{
+		node := CDNode{
 			elem: elem,
+			prior: frontNode,
 			next: frontNode.next,
 		}
 
-		// 修改frontNode
+		// 修改原frontNode.next和frontNode
+		frontNode.next.prior = &node
 		frontNode.next = &node
 		// length + 1
 		l.length++
@@ -136,7 +127,7 @@ func (l *SingleLinkedList) Insert(i int, elem Elem) (err error) {
 // 最好时间复杂度： 删除最后一个位置，不用挪动数据，O(1)
 // 最坏时间复杂度： 删除第一个位置，全挪，O(n)
 // 平均时间复杂度： (1+2+...+n)/n = (n+1)/2， O(n)
-func (l *SingleLinkedList) Delete(i int) (err error) {
+func (l *CircularDoubleLinkedList) Delete(i int) (err error) {
 	// 检查所要删除的索引是存在的
 	if i < 1 || i > l.length {
 		return ErrIndexOutOfRange
@@ -158,9 +149,7 @@ func (l *SingleLinkedList) Delete(i int) (err error) {
 		if err != nil {
 			return err
 		}
-		lastSecond.next = nil
-		// 回收原最后一个节点（由go GC自动回收，或后期考虑手动回收）
-		l.tail = lastSecond
+		lastSecond.next = l.head
 	default:
 		frontNode, err := l.FindNodeByIndex(i-1)
 		if err != nil {
@@ -178,13 +167,13 @@ func (l *SingleLinkedList) Delete(i int) (err error) {
 }
 
 // PrintAll 从前向后遍历线性表中所有元素并打印
-func (l *SingleLinkedList) PrintAll() {
+func (l *CircularDoubleLinkedList) PrintAll() {
 	// 检查l长度，至少要有一个元素
 	if l.length == 0 {
-		log.Println("单链表为空")
+		log.Println("循环双链表为空")
 	}
 
-	log.Println("单链表元素：")
+	log.Println("循环双链表元素：")
 	//迭代
 	next := l.head
 	for j:=0;j<l.length;j++ {
@@ -199,29 +188,29 @@ func (l *SingleLinkedList) PrintAll() {
 }
 
 // IsEmpty 判断线性表是否为空
-func (l *SingleLinkedList) IsEmpty() bool {
+func (l *CircularDoubleLinkedList) IsEmpty() bool {
 	return l.length == 0
 }
 
 // IsFull 判断线性表是否已满
-func (l *SingleLinkedList) IsFull() bool {
+func (l *CircularDoubleLinkedList) IsFull() bool {
 	return l.length >= MAXSIZE
 }
 
 // Clear 清除线性表所有元素，但不回收内存
-func (l *SingleLinkedList) Clear() (err error) {
+func (l *CircularDoubleLinkedList) Clear() (err error) {
 
 	return nil
 }
 
 // Destroy 销毁线性表，回收内存
-func (l *SingleLinkedList) Destroy() (err error) {
+func (l *CircularDoubleLinkedList) Destroy() (err error) {
 
 	return nil
 }
 
 // Append 末尾追加元素
-func (l *SingleLinkedList) Append(elem Elem) (err error) {
+func (l *CircularDoubleLinkedList) Append(elem Elem) (err error) {
 
 	// 检查单链表是否已满
 	// 这里不像Insert，可以用IsFull来检查有没有空间
@@ -229,16 +218,20 @@ func (l *SingleLinkedList) Append(elem Elem) (err error) {
 		return ErrNoExtraSpace
 	}
 
+	originLast, err := l.FindNodeByIndex(l.length)
+	if err != nil {
+		return err
+	}
+
 	// 构建节点
-	node := SNode{
+	node := CDNode{
 		elem: elem,
-		next: nil,
+		prior: originLast,
+		next: l.head,
 	}
 
 	// 更新原先最后一个节点的next
-	l.tail.next = &node
-	// 更新tail
-	l.tail = &node
+	originLast.next = &node
 	// 更新length
 	l.length++
 
@@ -246,7 +239,7 @@ func (l *SingleLinkedList) Append(elem Elem) (err error) {
 }
 
 // Prepend 头部追加元素
-func (l *SingleLinkedList) Prepend(elem Elem) (err error) {
+func (l *CircularDoubleLinkedList) Prepend(elem Elem) (err error) {
 
 	// 检查单链表是否已满
 	if l.IsFull() {
@@ -254,15 +247,14 @@ func (l *SingleLinkedList) Prepend(elem Elem) (err error) {
 	}
 
 	// 构建节点
-	node := SNode{
+	node := CDNode{
 		elem: elem,
 		next: l.head,	// 指向原先的第一个节点
 	}
+	node.prior = &node   // 指向自身（因为本身就是第一个）
 
-	// Prepend有个特殊情况就是：插入第一个时也是调用prepend，但是l.tail需要进行更新
 	if l.length == 0 {
-		// 更新tail
-		l.tail = &node
+		node.next = &node
 	}
 
 	// 更新head
@@ -276,9 +268,8 @@ func (l *SingleLinkedList) Prepend(elem Elem) (err error) {
 // Set方法基于Find方法实现
 
 // FindNodeByIndex 根据索引返回节点指针
-func (l *SingleLinkedList) FindNodeByIndex(i int) (*SNode, error) {
-		// 检查非空以及索引i存在
-	// length >= 0。i需要在1～length之间
+func (l *CircularDoubleLinkedList) FindNodeByIndex(i int) (*CDNode, error) {
+
 	if i <= 0 || i > l.length {
 		return nil, ErrIndexOutOfRange
 	}

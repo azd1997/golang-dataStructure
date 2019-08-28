@@ -2,8 +2,11 @@ package linearlist
 
 import (
 	"log"
-	"errors"
 )
+
+// 严格检验SequenceList是否实现LinearList接口
+// 实现LinearList的是*SequenceList
+var _ LinearList = (*SequenceList)(nil)
 
 // SequenceList 顺序表 顺序存储的线性表
 // l := SequenceList{} l: {[<nil> <nil ... >], 0}
@@ -28,18 +31,22 @@ func (l *SequenceList) Length() (len int) {
 }
 
 // FindByIndex 根据元素索引找到元素并返回元素内存位置
+// 假设MAXSIZE可以很大
+// 最好、最坏、平均时间复杂度： O(1)
 func (l *SequenceList) FindByIndex(i int) (elemAddr *Elem, err error) {
 	// 检查非空以及索引i存在
 	// length >= 0。i需要在1～length之间
 	if i <= 0 || i > l.length {
-		return nil, errors.New("该索引不存在！")
+		return nil, ErrIndexOutOfRange
 	}
 	elemAddr = &l.elems[i-1]
 	return elemAddr, nil
 }
 
 // FindByValue 根据元素值找到该元素的内存地址信息（如果只考虑顺序表，可以返回数组下表。但是我们还要考虑链式表）
-func (l *SequenceList) FindByValue(elemValue Elem) (elemAddrs []*Elem, err error) {
+// 假设MAXSIZE可以很大
+// 最好、最坏、平均时间复杂度： O(n)
+func (l *SequenceList) FindByValue(elemValue Elem) (elemAddrs []*Elem) {
 	// 循环遍历线性表， 匹配值
 	for i:=1;i<=l.length;i++ {
 		if l.elems[i-1] == elemValue {  // 注意这里要求内部元素类型是可以使用“==”符号的
@@ -47,10 +54,14 @@ func (l *SequenceList) FindByValue(elemValue Elem) (elemAddrs []*Elem, err error
 		}
 	}
 
-	return elemAddrs, nil
+	return elemAddrs
 }
 
 // Insert 插入元素到线性表第i个位置，i从1开始
+// 假设MAXSIZE可以很大
+// 最好时间复杂度： 插入到末尾的后一个位置，不用挪动数据，O(1)
+// 最坏时间复杂度： 插入到第一个位置，全挪，O(n)
+// 平均时间复杂度： (0+1+2+...+n)/(n+1) = n/2， O(n)
 func (l *SequenceList) Insert(i int, elem Elem) (err error) {
 	// 要求原线性表未满、i在线性表索引值范围
 	if l.IsFull() {
@@ -78,6 +89,9 @@ func (l *SequenceList) Insert(i int, elem Elem) (err error) {
 }
 
 // Delete 删除第i个位置的元素
+// 最好时间复杂度： 删除最后一个位置，不用挪动数据，O(1)
+// 最坏时间复杂度： 删除第一个位置，全挪，O(n)
+// 平均时间复杂度： (1+2+...+n)/n = (n+1)/2， O(n)
 func (l *SequenceList) Delete(i int) (err error) {
 	// 检查所要删除的索引是存在的
 	if i < 1 || i > l.length {
@@ -116,7 +130,7 @@ func (l *SequenceList) IsEmpty() bool {
 
 // IsFull 判断线性表是否已满
 func (l *SequenceList) IsFull() bool {
-	return l.length == MAXSIZE
+	return l.length >= MAXSIZE
 }
 
 // Clear 清除线性表所有元素，但不回收内存
@@ -138,7 +152,7 @@ func (l *SequenceList) Append(elem Elem) (err error) {
 	return nil
 }
 
-// Prepend 末尾追加元素
+// Prepend 头部追加元素
 func (l *SequenceList) Prepend(elem Elem) (err error) {
 
 	return nil
